@@ -1,0 +1,181 @@
+require 'string'
+require 'math'
+require 'libs.raylib'
+require 'os'
+require 'coroutine'
+--Raylib.SetRandomSeed(3523587)
+local w <comptime> = 800
+local h <comptime> = 450
+local scrn: Rectangle = {0.0, 0.0, w, h}
+local plr: Rectangle = {0.0, 0.0, 50, 50}
+local enemy: Rectangle = {Raylib.GetRandomValue(50, w - 50), Raylib.GetRandomValue(50, h - 50), 50, 50}
+local line: [2]Vector2 = { {0.0, 0.0}, {0.0, 0.0} }
+local score = 0
+local camera: Camera2D
+camera.target = {0.0, 0.0}
+Raylib.InitAudioDevice()
+Raylib.InitWindow(w, h, "shoot the red")
+local plrspeed <comptime> = 500
+local prog = 0.0
+local dict: [4]integer = {-1, 1, -1, 1}
+local direct = @enum{
+    UP = 0,
+    DOWN,
+    LEFT,
+    RIGHT
+}
+local bullet = @record{
+    pos: Rectangle,
+    dir: direct
+}
+local newblt: bullet = {{10.0, 10.0, 30, 5}}
+
+local direction: integer
+
+if not Raylib.IsAudioDeviceReady() then os.exit() end
+Raylib.SetMasterVolume(0.06)
+local shootsnd = Raylib.LoadSoundFromWave(Raylib.LoadWave("snd/shoot.wav"))
+local hit = Raylib.LoadSoundFromWave(Raylib.LoadWave("snd/hit.wav"))
+
+local shoot = false
+local animate_cube = false
+Raylib.SetTargetFPS(60)
+print("OK")
+while(not Raylib.WindowShouldClose()) do
+   --[[ if Raylib.IsKeyPressed(KeyboardKey.KEY_E) then
+        animate_cube = true
+            local time_went: number
+                --Raylib.DrawRectanglePro(plr, {0.0, 0.0}, 0, RED)
+                print("DRAW")
+                --start = plr.y
+                --os.sleep(0.1)
+
+                
+            --end
+        --end)    
+
+    end
+
+    if animate_cube then
+        local start = 0
+        local ends = 100
+        if plr.y >= ends then animate_cube = false else prog = prog + (0.1 * (Raylib.GetFrameTime())) * 2 end
+        
+        plr.y = Raymath.Lerp(start, ends, prog)
+        print(plr.y, prog)
+        
+    end]]     
+
+    switch direction
+    case direct.UP then
+        line[0].x =  plr.x +  plr.width/2
+        line[1].x = plr.x + plr.width/2
+        line[0].y = plr.y - 25
+        line[1].y = line[0].y - 25
+    case direct.DOWN then
+        line[0].x =  plr.x +  plr.width/2
+        line[1].x = plr.x + plr.width/2
+        line[0].y = plr.y + 75
+        line[1].y = line[0].y + 25
+    case direct.RIGHT then
+        line[0].x =  plr.x + 75
+        line[1].x = line[0].x + 25 
+        line[0].y = plr.y + plr.height/2
+        line[1].y = plr.y + plr.height/2 
+    case direct.LEFT then
+        line[0].x =  plr.x - 25
+        line[1].x = line[0].x - 25 
+        line[0].y = plr.y + plr.height/2
+        line[1].y = plr.y + plr.height/2 
+    end
+
+        if Raylib.IsKeyDown(KeyboardKey.KEY_LEFT_SHIFT) then
+            print(direction)
+        end
+        if Raylib.IsKeyDown(KeyboardKey.KEY_D) then
+            direction  = direct.RIGHT
+            plr.x = plr.x + plrspeed * Raylib.GetFrameTime()
+        end
+        if Raylib.IsKeyDown(KeyboardKey.KEY_A) then
+            direction = direct.LEFT
+            plr.x = plr.x - plrspeed * Raylib.GetFrameTime()
+        end
+        if Raylib.IsKeyDown(KeyboardKey.KEY_S) then
+            direction = direct.DOWN
+            plr.y = plr.y + plrspeed * Raylib.GetFrameTime()
+        end
+        if Raylib.IsKeyDown(KeyboardKey.KEY_W) then
+            direction = direct.UP
+            plr.y = plr.y - plrspeed * Raylib.GetFrameTime()
+        end
+    if Raylib.IsKeyPressed(KeyboardKey.KEY_SPACE) then
+        Raylib.PlaySound(shootsnd)
+        if direction > 1 then
+
+            newblt.pos.width = 30
+            newblt.pos.height = 5
+            newblt.pos.x = line[1].x
+            newblt.pos.y = line[1].y - 2
+            newblt.dir = direction
+        elseif direction < 2 then
+            newblt.pos.width = 5
+            newblt.pos.height = 30
+            newblt.pos.x = line[1].x - newblt.pos.width/2
+            newblt.pos.y = line[1].y
+            newblt.dir = direction 
+            --local vecpos = Raymath.Vector2Rotate({newblt.pos.width,  newblt.pos.height}, 90.0 * DEG2RAD)
+            
+            print(newblt.pos.x, newblt.pos.y)
+        end
+        shoot = true
+    end
+
+    if shoot then
+        if Raylib.CheckCollisionRecs(scrn, newblt.pos) then
+            print("collision found!")
+            if newblt.dir < 2 then
+                newblt.pos.y = newblt.pos.y + (1500 * Raylib.GetFrameTime()) * dict[newblt.dir]
+            elseif newblt.dir > 1 then
+                newblt.pos.x = newblt.pos.x + (1500 * Raylib.GetFrameTime()) * dict[newblt.dir]
+            end
+            if Raylib.CheckCollisionRecs(enemy, newblt.pos) then
+                Raylib.PlaySound(hit)
+                enemy.x = Raylib.GetRandomValue(50, w - 50)
+                enemy.y = Raylib.GetRandomValue(50, h - 50)
+                score = score + 1
+            end
+        else
+            print("not colliding")
+            newblt.pos.x = 10
+            newblt.pos.y = 10
+            shoot  = false
+        end
+    end
+    Raylib.BeginDrawing()
+    Raylib.ClearBackground(LIGHTGRAY)
+
+       
+        
+
+    Raylib.DrawRectanglePro(newblt.pos, {0.0, 0.0}, 0, YELLOW)
+    Raylib.DrawRectanglePro(plr, {0.0, 0.0}, 0, LIME)
+    Raylib.DrawRectanglePro(enemy, {0.0, 0.0}, 0, RED)
+    Raylib.DrawLineEx(line[0], line[1], 5, BLUE)
+    Raylib.BeginMode2D(camera)
+    do
+        
+        
+        camera.target.x = plr.x
+        camera.target.y = plr.y
+
+    end
+    Raylib.EndMode2D()
+    Raylib.DrawFPS(0,0)
+    Raylib.DrawText("Score: "..score, 100, 0,  20, WHITE)
+    Raylib.EndDrawing()
+end
+Raylib.UnloadSound(hit)
+Raylib.UnloadSound(shootsnd)
+Raylib.CloseAudioDevice()
+
+Raylib.CloseWindow()
