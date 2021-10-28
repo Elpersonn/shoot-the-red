@@ -108,6 +108,10 @@ while(not Raylib.WindowShouldClose()) do
             direction = direct.UP
             plr.y = plr.y - plrspeed * Raylib.GetFrameTime()
         end
+        if Raylib.IsKeyPressed(KeybaordKey.KEY_R) then
+            plr.y = 0.0
+            plr.x = 0.0
+        end
     if Raylib.IsKeyPressed(KeyboardKey.KEY_SPACE) then
         Raylib.PlaySound(shootsnd)
         if direction > 1 then
